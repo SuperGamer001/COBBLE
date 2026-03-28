@@ -1,18 +1,16 @@
-// The Light class for the COBBLE engine
+// Light plugin and class for COBBLE
 export class Light {
     constructor(attrs = {}) {
-        try {
-            THREE; // If THREE is not defined, this will throw an error
-        } catch (e) {
-            console.error("THREE.js is not loaded. Please include it before using the Light class.");
+        if (typeof globalThis.THREE === "undefined") {
+            throw new Error("THREE.js is not loaded. Please include it before using the Light class.");
         }
 
         this.name = attrs.name || "Light";
         this.type = attrs.type || "ambient";
-        this.color = attrs.color || 0xffffff;
+        this.color = attrs.color || 0xFFFFFF;
         this.intensity = attrs.intensity || 1;
         this.position = attrs.position || { x: 0, y: 0, z: 0 };
-        this.mesh = null; // Placeholder for the THREE.js light object associated with this entity
+        this.mesh = null;
 
         switch (this.type.toLowerCase()) {
             case "ambient":
@@ -20,26 +18,56 @@ export class Light {
                 break;
             case "directional":
                 this.mesh = new THREE.DirectionalLight(this.color, this.intensity);
-                this.mesh.position.set(this.position.x, this.position.y, this.position.z);
                 break;
             case "point":
                 this.mesh = new THREE.PointLight(this.color, this.intensity);
-                this.mesh.position.set(this.position.x, this.position.y, this.position.z);
                 break;
             case "spot":
                 this.mesh = new THREE.SpotLight(this.color, this.intensity);
-                this.mesh.position.set(this.position.x, this.position.y, this.position.z);
                 break;
             default:
-                console.error(`Unsupported light type "${this.type}". Please use "ambient", "directional", "point", or "spot".`);
-                return;
+                throw new Error(`Unsupported light type \"${this.type}\".`);
         }
 
-        this.update = function() {
-            // For directional, point, and spot lights, update the position if it changes
-            if (this.mesh instanceof THREE.DirectionalLight || this.mesh instanceof THREE.PointLight || this.mesh instanceof THREE.SpotLight) {
-                this.mesh.position.set(this.position.x, this.position.y, this.position.z);
-            }
+        this.syncTransform();
+    }
+
+    syncTransform() {
+        if (!this.mesh) {
+            return;
+        }
+
+        if (
+            this.mesh instanceof THREE.DirectionalLight ||
+            this.mesh instanceof THREE.PointLight ||
+            this.mesh instanceof THREE.SpotLight
+        ) {
+            this.mesh.position.set(this.position.x, this.position.y, this.position.z);
         }
     }
+
+    update() {
+        this.syncTransform();
+    }
 }
+
+export const LightPlugin = {
+    name: "light",
+    version: "1.0.0",
+    install(context, _options, api) {
+        api.extend("light", (_ctx, attrs = {}) => {
+            const light = new Light(attrs);
+            api.addEntity(light);
+            context.emit("light:created", { light });
+            return light;
+        });
+
+        return {
+            onStart() {
+                context.emit("plugin:light:ready", { types: ["ambient", "directional", "point", "spot"] });
+            },
+        };
+    },
+};
+
+export default LightPlugin;

@@ -1,24 +1,38 @@
 // The script that initializes the COBBLE engine.
 import {Engine} from './COBBLE/main.js';
-import {Entity} from './COBBLE/plugins/entity.js';
-import {Light} from './COBBLE/plugins/light.js';
+import {EntityPlugin} from './COBBLE/plugins/entity.js';
+import {LightPlugin} from './COBBLE/plugins/light.js';
 
 const engine = new Engine();
-const player = new Entity({
+
+engine.use(EntityPlugin);
+engine.use(LightPlugin);
+
+engine.on('engine:start', () => {
+    console.info('COBBLE engine started');
+});
+
+engine.on('entity:added', ({ entity }) => {
+    console.info(`Entity added: ${entity.name}`);
+});
+
+const player = engine.entity({
     name: "Player",
     mesh: "Cube",
     color: 0xFF0000, // Red color
     position: { x: 0, y: 0, z: 0 },
     rotation: { x: 5, y: 2, z: 5 },
-    velocity: { x: 0, y: 0, z: 0 }, // Move to the right
+    velocity: { x: 0.4, y: 0, z: 0 }, // Move to the right
 });
-const ambientLight = new Light({
+
+const ambientLight = engine.light({
     name: "Ambient Light",
     type: "ambient",
     color: 0xFFFFFF, // White color
-    intensity: 0.05,
+    intensity: 0.2,
 });
-const spotLight = new Light({
+
+const spotLight = engine.light({
     name: "Spot Light",
     type: "spot",
     color: 0xFFFFFF, // White color
@@ -26,8 +40,5 @@ const spotLight = new Light({
     position: { x: 0, y: 5, z: 0 }, // Position of the light
 });
 
-engine.addEntity(player);
-engine.addEntity(ambientLight);
-engine.addEntity(spotLight);
 
 engine.start();
